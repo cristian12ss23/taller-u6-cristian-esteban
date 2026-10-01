@@ -41,6 +41,7 @@ def resumir(tabla: pd.DataFrame) -> pd.DataFrame:
             duracion_media_min=("duracion_min", "mean"),
             tarifa_media_cop=("tarifa_cop", "mean"),
             tarifa_p50_cop=("tarifa_cop", "median"),
+            tarifa_sd_cop=("tarifa_cop", "std"),
         )
         .round(2)
         .reset_index()
