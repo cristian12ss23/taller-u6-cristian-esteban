@@ -16,8 +16,8 @@ import numpy as np
 import pandas as pd
 
 SEMILLA = 20260917
-   CIUDADES = ["Bogota", "Medellin", "Cali", "Barranquilla", "Bucaramanga", "Pereira"]
-   PESOS_CIUDAD = [0.45, 0.20, 0.15, 0.10, 0.05, 0.05]
+CIUDADES = ["Bogota", "Medellin", "Cali", "Barranquilla", "Bucaramanga", "Pereira"]
+PESOS_CIUDAD = [0.45, 0.20, 0.15, 0.10, 0.05, 0.05]
 FECHA_INICIO = "2026-08-01"
 
 
