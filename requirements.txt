@@ -1,0 +1,6 @@
+# Dependencias del laboratorio 5. Versiones fijadas para garantizar reproducibilidad.
+# Fecha de referencia: septiembre de 2026. Intérprete de referencia: Python 3.12.
+numpy==2.1.3
+pandas==2.2.3
+pyarrow==17.0.0
+matplotlib==3.9.2

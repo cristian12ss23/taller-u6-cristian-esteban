@@ -1,0 +1,10 @@
+# Datos y salidas se regeneran; no se versionan.
+datos/*
+salidas/*
+salidas_a/
+salidas_b/
+!datos/.gitkeep
+!salidas/.gitkeep
+__pycache__/
+*.pyc
+.venv/

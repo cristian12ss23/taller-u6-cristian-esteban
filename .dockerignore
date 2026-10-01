@@ -1,0 +1,10 @@
+.git
+.gitignore
+.devcontainer
+datos/
+salidas/
+salidas_a/
+salidas_b/
+__pycache__/
+*.pyc
+*.md
