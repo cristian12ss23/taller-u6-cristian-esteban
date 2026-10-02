@@ -4,7 +4,7 @@
 # Uso: ./reproducir.sh
 set -eu
 
-IMAGEN="lab05-viajes:1.0"
+IMAGEN="lab05-viajes:1.1"
 
 echo "== Construcción de la imagen ${IMAGEN} =="
 docker build --tag "${IMAGEN}" .
