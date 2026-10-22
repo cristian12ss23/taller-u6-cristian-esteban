@@ -2,6 +2,21 @@
 
 Repositorio de referencia del Laboratorio 5 del curso Computación en la Nube para Análisis de Datos (Unidad 6: contenedores y reproducibilidad). Contiene un análisis de datos empaquetado en una imagen Docker, versionado con Git y verificable mediante huellas SHA-256 de sus salidas.
 
+## Proyecto: brecha rural vs urbana en Saber 11
+
+Además del laboratorio, el repositorio contiene el proyecto del grupo en la carpeta [`proyecto/`](proyecto/). Compara los resultados de Saber 11 de 2022 (calendario A, 1.065.886 estudiantes) entre colegios urbanos y rurales, con los datos abiertos del ICFES en datos.gov.co, y corre completo en Docker.
+
+Principales resultados:
+
+- Los estudiantes de colegios rurales obtienen en promedio **26 puntos menos** en el puntaje global (228,4 frente a 254,6). La diferencia es estadísticamente significativa y tiene un efecto mediano (d de Cohen = 0,52).
+- La brecha aparece en todas las áreas y es mayor en **inglés** (6,8 puntos).
+- En los colegios oficiales la brecha es de 24 puntos. En los no oficiales se invierte.
+- La brecha crece con el estrato y es mayor en Guainía, San Andrés, Amazonas, Sucre y La Guajira.
+
+![Promedio por área según zona del colegio](proyecto/figuras/medias_por_area.png)
+
+Detalle completo, método y cómo reproducirlo: [proyecto/README.md](proyecto/README.md)
+
 ## Estructura
 
 ```

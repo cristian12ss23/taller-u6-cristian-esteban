@@ -30,7 +30,7 @@ Los datos se descargan con la API pública de datos.gov.co, filtrados por period
    - Resumen por zona: estudiantes, media, mediana y desviación del puntaje global, y media por área.
    - Brecha urbano − rural según tipo de colegio, estrato y departamento (departamentos con al menos 100 estudiantes rurales).
    - Prueba t de Welch, intervalo de confianza del 95 % de la diferencia y tamaño del efecto (d de Cohen).
-   - Tres gráficas: distribución del puntaje global, promedio por área y brecha por departamento.
+   - Tres gráficas: distribución del puntaje global, promedio por área y brecha por departamento. Una copia de las del periodo 20224 está en `figuras/` para mostrarlas en este README.
    - `manifiesto.json` con la huella SHA-256 de los datos y de cada salida, y las versiones de las bibliotecas.
 
 ## Herramientas
@@ -66,6 +66,8 @@ Se analizaron **1.065.886 estudiantes**: 883.458 de colegios urbanos y 182.428 d
 - Prueba t de Welch: diferencia de 26,24 puntos, intervalo de confianza del 95 % entre 26,00 y 26,48. El valor p es menor que 0,001 (el programa lo muestra como 0.0 porque es tan pequeño que se redondea a cero), así que la diferencia no se explica por azar.
 - Tamaño del efecto: d de Cohen = 0,52, un efecto **mediano**. La brecha es real y además importante en la práctica.
 
+![Distribución del puntaje global por zona](figuras/distribucion_global.png)
+
 ### 2. Todas las áreas muestran brecha; la mayor es en inglés
 | Área | Urbano | Rural | Brecha |
 |---|---|---|---|
@@ -74,6 +76,8 @@ Se analizaron **1.065.886 estudiantes**: 883.458 de colegios urbanos y 182.428 d
 | Matemáticas | 51,51 | 46,12 | 5,40 |
 | Sociales | 48,61 | 43,34 | 5,27 |
 | C. naturales | 49,81 | 45,58 | 4,23 |
+
+![Promedio por área según zona del colegio](figuras/medias_por_area.png)
 
 ### 3. Según el tipo de colegio, la brecha cambia de sentido
 | Tipo de colegio | Media urbano | Media rural | Brecha |
@@ -99,6 +103,8 @@ El puntaje rural se mantiene casi plano (entre 205 y 236) sin importar el estrat
 ### 5. Por departamento
 - **Mayor brecha:** Guainía (55,90), San Andrés (44,33), Amazonas (36,89), Sucre (34,09) y La Guajira (33,70).
 - **Menor brecha:** Valle (12,65), Meta (5,93) y Bogotá (3,64). En Cundinamarca (−3,64) y Quindío (−8,15) los rurales superan a los urbanos.
+
+![Brecha urbano − rural por departamento](figuras/brecha_departamento.png)
 
 ### Conclusión
 Los estudiantes de colegios rurales obtienen en promedio 26 puntos menos en el puntaje global de Saber 11, con un efecto mediano y presente en todas las áreas, sobre todo en inglés. La brecha se concentra en el sector oficial y es más grande en departamentos periféricos (Guainía, San Andrés, Amazonas, La Guajira) que en los del centro del país.
