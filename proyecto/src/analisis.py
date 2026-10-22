@@ -50,15 +50,22 @@ def huella(ruta: Path) -> str:
     return sha.hexdigest()  # Devuelve la huella en hexadecimal
 
 
-def cargar(ruta: Path) -> pd.DataFrame:
-    """Lee el CSV, convierte los puntajes a números y limpia los registros inválidos."""
+def cargar(ruta: Path) -> tuple[pd.DataFrame, dict]:
+    """Lee el CSV, quita estudiantes repetidos, convierte los puntajes y limpia los registros inválidos."""
     tabla = pd.read_csv(ruta, dtype=str)  # Lee todo como texto para controlar la conversión
+    limpieza = {"filas_descargadas": int(len(tabla))}  # Registro de cuántas filas se quitan en cada paso
+    tabla = tabla.drop_duplicates()  # Quita filas idénticas (el conjunto trae a cada estudiante dos veces)
+    limpieza["filas_identicas_quitadas"] = limpieza["filas_descargadas"] - int(len(tabla))  # Cuántas eran copias exactas
+    antes = len(tabla)  # Filas antes de revisar identificadores repetidos con datos distintos
+    tabla = tabla.drop_duplicates(subset="estu_consecutivo", keep="first")  # Deja una sola fila por estudiante
+    limpieza["ids_repetidos_quitados"] = int(antes - len(tabla))  # Cuántas filas tenían el mismo estudiante con datos distintos
     for columna in PUNTAJES:  # Recorre cada columna de puntaje
         tabla[columna] = pd.to_numeric(tabla[columna], errors="coerce")  # Convierte a número; lo inválido queda vacío
     tabla["zona"] = tabla["cole_area_ubicacion"].str.strip().str.upper()  # Normaliza la zona a mayúsculas sin espacios
     tabla = tabla[tabla["zona"].isin(ZONAS)]  # Conserva solo URBANO y RURAL
     tabla = tabla[tabla["punt_global"].between(0, 500)]  # Conserva puntajes globales en el rango válido
-    return tabla.reset_index(drop=True)  # Devuelve la tabla limpia con índice nuevo
+    limpieza["estudiantes_analizados"] = int(len(tabla))  # Estudiantes únicos que quedan para el análisis
+    return tabla.reset_index(drop=True), limpieza  # Devuelve la tabla limpia y el registro de limpieza
 
 
 def resumen_zona(tabla: pd.DataFrame) -> pd.DataFrame:
@@ -119,7 +126,7 @@ def prueba_estadistica(tabla: pd.DataFrame) -> dict:
         "ic95_superior": round(float(diferencia + margen), 2),  # Límite superior del intervalo
         "t": round(float(t), 2),  # Estadístico t
         "grados_libertad": round(float(gl), 1),  # Grados de libertad
-        "p_valor": float(f"{p:.3g}"),  # Valor p con 3 cifras significativas
+        "p_valor": f"{p:.3g}" if p > 0 else "menor que 1e-300",  # Valor p; si es tan pequeño que se redondea a 0, se dice así
         "d_cohen": round(float(diferencia / de_combinada), 3),  # Tamaño del efecto
     }
 
@@ -201,15 +208,18 @@ def main() -> int:
     lector = argparse.ArgumentParser(description=__doc__)  # Prepara el lector de argumentos
     lector.add_argument("--periodo", default="20224")  # Periodo a analizar
     lector.add_argument("--datos", default="datos")  # Carpeta de entrada
-    lector.add_argument("--salidas", default="salidas")  # Carpeta de salida
+    lector.add_argument("--salidas", default="salidas")  # Carpeta base de salida (cada periodo usa su subcarpeta)
     args = lector.parse_args()  # Lee los argumentos
 
     entrada = Path(args.datos) / f"saber11_{args.periodo}.csv"  # Archivo de datos descargado
-    carpeta = Path(args.salidas)  # Carpeta de salidas
+    carpeta = Path(args.salidas) / args.periodo  # Carpeta de salidas del periodo, por ejemplo salidas/20224
     carpeta.mkdir(parents=True, exist_ok=True)  # La crea si no existe
 
-    tabla = cargar(entrada)  # Lee y limpia los datos
+    tabla, limpieza = cargar(entrada)  # Lee y limpia los datos
     print(f"== Análisis rural vs urbano, periodo {args.periodo} ({len(tabla):,} estudiantes) ==")  # Encabezado
+    print(f"Filas descargadas        : {limpieza['filas_descargadas']:,}")  # Filas del archivo
+    print(f"Copias idénticas quitadas: {limpieza['filas_identicas_quitadas']:,}")  # Duplicados exactos
+    print(f"IDs repetidos quitados   : {limpieza['ids_repetidos_quitados']:,}")  # Mismo estudiante con datos distintos
 
     resumen = resumen_zona(tabla)  # Resumen por zona
     naturaleza = brecha_por(tabla, "cole_naturaleza")  # Brecha según colegio oficial o no oficial
@@ -248,6 +258,7 @@ def main() -> int:
     manifiesto = {  # Contenido del manifiesto
         "periodo": args.periodo,  # Periodo analizado
         "estudiantes": int(len(tabla)),  # Número de estudiantes analizados
+        "limpieza": limpieza,  # Detalle de las filas quitadas
         "sha256_datos": huella(entrada),  # Huella del archivo de entrada
         "huellas": {n: huella(carpeta / n) for n in nombres},  # Huella de cada salida
         "python": platform.python_version(),  # Versión de Python

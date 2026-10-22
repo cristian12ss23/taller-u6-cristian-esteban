@@ -4,16 +4,16 @@ Repositorio de referencia del Laboratorio 5 del curso Computación en la Nube pa
 
 ## Proyecto: brecha rural vs urbana en Saber 11
 
-Además del laboratorio, el repositorio contiene el proyecto del grupo en la carpeta [`proyecto/`](proyecto/). Compara los resultados de Saber 11 de 2022 (calendario A, 1.065.886 estudiantes) entre colegios urbanos y rurales, con los datos abiertos del ICFES en datos.gov.co, y corre completo en Docker.
+Además del laboratorio, el repositorio contiene el proyecto del grupo en la carpeta [`proyecto/`](proyecto/). Compara los resultados de Saber 11 entre colegios urbanos y rurales en 2022 (532.791 estudiantes) y en 2019, antes de la pandemia (546.211 estudiantes), con los datos abiertos del ICFES en datos.gov.co, y corre completo en Docker.
 
 Principales resultados:
 
-- Los estudiantes de colegios rurales obtienen en promedio **26 puntos menos** en el puntaje global (228,4 frente a 254,6). La diferencia es estadísticamente significativa y tiene un efecto mediano (d de Cohen = 0,52).
+- En 2022 los estudiantes de colegios rurales obtienen en promedio **26 puntos menos** en el puntaje global (228,4 frente a 254,6). La diferencia es estadísticamente significativa y tiene un efecto mediano (d de Cohen = 0,52).
 - La brecha aparece en todas las áreas y es mayor en **inglés** (6,8 puntos).
-- En los colegios oficiales la brecha es de 24 puntos. En los no oficiales se invierte.
-- La brecha crece con el estrato y es mayor en Guainía, San Andrés, Amazonas, Sucre y La Guajira.
+- **La brecha creció entre 2019 y 2022**, de 23,7 a 26,2 puntos: los dos grupos mejoraron, pero los rurales menos. Aumentó en todas las áreas, en todos los estratos y en 26 de 32 departamentos.
+- En los colegios oficiales la brecha es de 24 puntos; en los no oficiales se invierte. Es mayor en Guainía, San Andrés, Amazonas, Sucre y La Guajira.
 
-![Promedio por área según zona del colegio](proyecto/figuras/medias_por_area.png)
+![Brecha por área, 2019 vs 2022](proyecto/figuras/brecha_por_area_periodos.png)
 
 Detalle completo, método y cómo reproducirlo: [proyecto/README.md](proyecto/README.md)
 

@@ -20,6 +20,7 @@ import pandas as pd  # Une las páginas descargadas, las ordena y escribe el CSV
 URL_BASE = "https://www.datos.gov.co/resource/kgxf-xxbe.csv"  # Dirección del conjunto en formato CSV
 COLUMNAS = [  # Columnas que se piden a la API (solo las necesarias, para descargar menos)
     "periodo",  # Año y calendario de la prueba (por ejemplo, 20224)
+    "estu_consecutivo",  # Identificador del estudiante (permite quitar repetidos)
     "cole_area_ubicacion",  # Zona del colegio: URBANO o RURAL
     "cole_naturaleza",  # Tipo de colegio: OFICIAL o NO OFICIAL
     "cole_depto_ubicacion",  # Departamento donde está el colegio
