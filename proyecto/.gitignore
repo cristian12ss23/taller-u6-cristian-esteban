@@ -1,0 +1,5 @@
+# Los datos descargados y las salidas se regeneran con Docker; no se versionan.
+datos/*
+salidas/*
+!datos/.gitkeep
+!salidas/.gitkeep
