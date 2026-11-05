@@ -14,7 +14,7 @@ El resultado sirve para orientar dónde focalizar programas e inversión en la e
 
 Los datos se descargan con la API pública de datos.gov.co, filtrados por periodo y solo con las columnas necesarias. No se versionan: se regeneran con el contenedor.
 
-**Calidad de los datos.** En los periodos 20194 y 20224 el conjunto trae a cada estudiante dos veces: en 20224 hay 1.065.888 filas, pero solo 532.792 identificadores de estudiante distintos (`estu_consecutivo`). Las filas repetidas son copias idénticas, así que el análisis las quita antes de calcular. Esto no cambia los promedios, pero sí los conteos.
+**Calidad de los datos.** En los periodos 20194 y 20224 el conjunto trae repetida a casi toda la población: en 20224 hay 1.065.888 filas, pero solo 532.792 identificadores de estudiante distintos (`estu_consecutivo`). Antes de calcular, el análisis quita las copias idénticas y luego deja una sola fila por identificador; `manifiesto.json` registra cuántas filas quita cada paso. La primera versión de este análisis no los quitaba: contaba 1.065.886 estudiantes y un intervalo de confianza de 26,00 a 26,48. Ya sin repetidos son 532.791 estudiantes y el intervalo es de 25,90 a 26,58. Los promedios no cambiaron, pero los conteos sí, y la precisión estaba sobrestimada.
 
 ## Variables
 | Variable | Uso |
@@ -36,35 +36,60 @@ Los datos se descargan con la API pública de datos.gov.co, filtrados por period
    - Tres gráficas: distribución del puntaje global, promedio por área y brecha por departamento.
    - `manifiesto.json` con las filas quitadas, la huella SHA-256 de los datos y de cada salida, y las versiones de las bibliotecas.
 3. `src/comparar.py` pone lado a lado los dos periodos en `salidas/comparacion/`: brecha global y por área, por tipo de colegio y por departamento, con dos gráficas.
+4. `src/profundizar.py` escribe en `salidas/profundizacion/` lo que los pasos anteriores no responden: la brecha dentro del mismo tipo de colegio y estrato a la vez, el intervalo de confianza de cada departamento y el conteo de datos faltantes. También guarda los datos limpios en Parquet y comprueba la conversión. No cambia las salidas de los pasos 2 y 3, así que sus huellas siguen siendo válidas.
 
 Una copia de las gráficas está en `figuras/` para mostrarlas en este README.
 
-## Herramientas
-- pandas y scipy para el análisis, matplotlib para las gráficas.
-- Docker para fijar el entorno, con versiones exactas en `requirements.txt`.
+## Técnicas y herramientas del curso
+Esto es lo que se usó de Computación en la Nube para Análisis de Datos y para qué sirvió en este proyecto.
+
+| Técnica o herramienta | Qué se hizo | Cómo ayudó | Dónde se ve |
+|---|---|---|---|
+| **Git** (control de versiones) | Cada cambio se registró como una confirmación con autor, fecha y mensaje. | La primera versión contaba 1.065.886 estudiantes, con repetidos. La corrección quedó en otra confirmación, así que se puede comparar el antes y el después. | `git log`, confirmaciones `647cc0d` y `d997e0a` |
+| **GitHub** | El repositorio público guarda el código y el README con las gráficas. | Los dos integrantes trabajaron sobre la misma versión del proyecto, sin pasarse copias por correo, y cualquiera puede revisarlo. | Este repositorio |
+| **Codespaces** (máquina en la nube) | El proyecto se construye y se ejecuta en un computador de GitHub, desde el navegador. | Más de un millón de filas por periodo se descargan y procesan sin instalar nada ni depender del computador de cada integrante. | `Cómo reproducir` |
+| **Docker: imagen y Dockerfile** | La imagen fija Python 3.12, las bibliotecas y el código. El periodo se elige al ejecutar, con `-e PERIODO`. | 2019 y 2022 se analizan con la misma imagen. Si la brecha cambia, la causa no es una diferencia de código ni de versiones. | `Dockerfile`, `ejecutar.sh` |
+| **Docker: volúmenes** | `datos/` y `salidas/` se conectan al contenedor con `--volume`. | El contenedor se desecha al terminar, pero los resultados quedan. Además, la descarga de varios minutos no se repite. | `Cómo reproducir` |
+| **Docker: capas y privilegio mínimo** | `requirements.txt` se copia antes que el código y el contenedor corre con el usuario `analista`, sin permisos de administrador. | Cambiar el código no obliga a reinstalar las bibliotecas, y el proceso solo tiene los permisos que necesita. | `Dockerfile` |
+| **Versiones fijadas** | Cada biblioteca lleva su versión exacta con `==`. | La imagen instala lo mismo sin importar cuándo se construya. | `requirements.txt` |
+| **Huellas SHA-256 y manifiesto** | Se calcula la huella de los datos y de cada salida. Los datos se ordenan de forma fija antes de guardarlos. | Permite comprobar si otra ejecución dio exactamente lo mismo, y avisa si la fuente cambió. La huella detecta el cambio, pero no recupera los datos anteriores, porque no se guarda una copia. | `manifiesto.json`, `Huellas de referencia` |
+| **`.gitignore`** | Los datos y las salidas no entran al repositorio. | Se versiona la receta y no el resultado, de modo que el repositorio se mantiene liviano. | `.gitignore` |
+| **Datos abiertos e ingesta por API** | La descarga va por páginas de 50.000 filas, con hasta 5 reintentos, solo 12 columnas y reutilizando el CSV si ya existe. | Una falla momentánea de red se reintenta sin perder lo ya descargado, se baja solo lo necesario y repetir el comando no duplica datos. | `src/descargar.py` |
+| **Calidad y zonas de datos** | Se separa el CSV original, los datos limpios y los resultados. Se revisó la fuente antes de analizar. | Revisar los identificadores mostró que los conteos estaban casi duplicados, y se corrigió antes de comparar 2019 con 2022. | `src/analisis.py`, `Calidad de los datos` |
+| **Parquet** | El resumen y los datos limpios se guardan en Parquet. Se comparan filas, columnas, vacíos y suma del puntaje antes de aceptar la conversión. | Permite leer solo las columnas necesarias, y la comprobación evita aceptar una conversión dañada. | `src/profundizar.py`, `registro.json` |
+
+**Herramientas del curso que no se usaron.** PySpark, Databricks y Cassandra no hacen parte de este proyecto. Con cerca de un millón de filas por periodo, pandas fue suficiente en el Codespace. Cassandra está pensada para consultar por clave, y aquí el trabajo consiste en agrupar y resumir todos los datos.
+
+Para el análisis se usaron pandas, scipy y matplotlib.
 
 ## Cómo reproducir
 Desde la raíz del repositorio, en el codespace:
 
 ```bash
-docker build --tag proyecto:0.3 proyecto/
+docker build --tag proyecto:0.4 proyecto/
 
 # 2022
 docker run --rm -e PERIODO=20224 \
   --volume "$(pwd)/proyecto/datos:/app/datos" \
   --volume "$(pwd)/proyecto/salidas:/app/salidas" \
-  proyecto:0.3
+  proyecto:0.4
 
 # 2019
 docker run --rm -e PERIODO=20194 \
   --volume "$(pwd)/proyecto/datos:/app/datos" \
   --volume "$(pwd)/proyecto/salidas:/app/salidas" \
-  proyecto:0.3
+  proyecto:0.4
 
 # Comparación
 docker run --rm --entrypoint python \
   --volume "$(pwd)/proyecto/salidas:/app/salidas" \
-  proyecto:0.3 src/comparar.py
+  proyecto:0.4 src/comparar.py
+
+# Profundización (usa los CSV de datos/)
+docker run --rm --entrypoint python \
+  --volume "$(pwd)/proyecto/datos:/app/datos" \
+  --volume "$(pwd)/proyecto/salidas:/app/salidas" \
+  proyecto:0.4 src/profundizar.py
 ```
 
 Cada descarga trae cerca de un millón de filas y tarda varios minutos. Las ejecuciones siguientes reutilizan los CSV de `datos/`.
@@ -121,6 +146,8 @@ El puntaje rural se mantiene casi plano (entre 205 y 236) sin importar el estrat
 - **Mayor brecha:** Guainía (55,90), San Andrés (44,33), Amazonas (36,89), Sucre (34,09) y La Guajira (33,70).
 - **Menor brecha:** Valle (12,65), Meta (5,93) y Bogotá (3,63). En Cundinamarca (−3,64) y Quindío (−8,15) los rurales superan a los urbanos.
 
+Estas cifras deben leerse junto con el número de estudiantes de cada departamento: el mínimo para entrar en la tabla es de 100 rurales, y con pocos estudiantes la brecha es menos precisa. `salidas/profundizacion/brecha_departamento_ic.csv` trae el intervalo de confianza y el peso de cada departamento en el total de rurales.
+
 ![Brecha urbano − rural por departamento](figuras/brecha_departamento.png)
 
 ## Comparación 2019 vs 2022
@@ -131,7 +158,7 @@ El puntaje rural se mantiene casi plano (entre 205 y 236) sin importar el estrat
 | 2019 (20194) | 546.211 | 249,91 | 226,22 | 23,69 | 23,34 a 24,04 | 0,47 |
 | 2022 (20224) | 532.791 | 254,63 | 228,39 | **26,24** | 25,90 a 26,58 | 0,52 |
 
-Los dos intervalos de confianza no se tocan, así que el aumento de la brecha es estadísticamente claro. Los dos grupos subieron su puntaje promedio entre 2019 y 2022, pero el urbano subió 4,72 puntos y el rural solo 2,17. Por eso la distancia entre ellos aumentó.
+El aumento fue de 2,55 puntos, con un intervalo de confianza del 95 % de 2,06 a 3,04, calculado a partir de los intervalos de cada año. Como no incluye el cero, el aumento es estadísticamente claro. Los dos grupos subieron su puntaje promedio entre 2019 y 2022, pero el urbano subió 4,72 puntos y el rural solo 2,17. Por eso la distancia entre ellos aumentó.
 
 ### 7. La brecha creció en todas las áreas
 | Área | Brecha 2019 | Brecha 2022 | Cambio |
@@ -145,18 +172,31 @@ Los dos intervalos de confianza no se tocan, así que el aumento de la brecha es
 ![Brecha por área, 2019 vs 2022](figuras/brecha_por_area_periodos.png)
 
 ### 8. Por tipo de colegio y estrato
-- En los colegios **oficiales** la brecha pasó de 22,88 a 24,11 (+1,23).
+- En los colegios **oficiales**, que tienen el 94 % de los rurales, la brecha pasó de 22,88 a 24,11 (+1,23), menos de la mitad del aumento general de 2,55. La sección 10 revisa de dónde viene el resto.
 - En los **no oficiales** los rurales siguen por encima, pero la ventaja bajó de 27,39 a 19,43 puntos.
 - La brecha creció en **todos los estratos**; por ejemplo, en estrato 1 pasó de 12,03 a 14,25 y en estrato 3 de 26,74 a 30,37.
 
 ### 9. Por departamento
 La brecha creció en **26 de los 32 departamentos** comparados.
 - **Mayor aumento:** Casanare (+11,64), Bogotá (+9,54), La Guajira (+7,75), Amazonas (+7,26) y Nariño (+6,19).
-- **Se redujo en:** Valle (−4,44), Quindío (−3,69), Chocó (−3,58), Putumayo (−1,05) y Arauca (−0,18).
+- **Se redujo en 6:** Valle (−4,44), Quindío (−3,69), Chocó (−3,58), Putumayo (−1,05), Arauca (−0,18) y Guainía (cambio muy pequeño, cerca de −0,1 en la gráfica).
 
 Bogotá tiene pocos estudiantes rurales (alrededor de 600 por año), así que su cambio debe leerse con cuidado.
 
 ![Cambio de la brecha por departamento, 2019 a 2022](figuras/cambio_departamento.png)
+
+## Comparación dentro del mismo tipo de colegio y estrato
+
+### 10. ¿Cuánto queda de la brecha?
+La brecha general mezcla dos cosas: la diferencia entre zonas y el hecho de que urbanos y rurales no se reparten igual entre tipos de colegio y estratos. Para separarlas, se calcula la brecha dentro de cada grupo y se promedia con el peso que ese grupo tiene entre los rurales.
+
+Por ejemplo, con solo el tipo de colegio en 2022:
+
+(85.886 × 24,11 + 5.328 × (−19,43)) / 91.214 = **21,57 puntos**, frente a 26,24 sin ajustar.
+
+Es decir, igualar el tipo de colegio quita cerca de 4,7 puntos de la brecha. Los estudiantes sin dato de estrato se conservan como una categoría propia, `SIN DATO`, y su cantidad queda registrada en `salidas/profundizacion/registro.json`.
+
+> **Pendiente:** correr `src/profundizar.py` y pegar aquí las tablas de `salidas/profundizacion/resultados.md`.
 
 ## Conclusión
 Los estudiantes de colegios rurales obtienen en promedio 26 puntos menos en el puntaje global de Saber 11 de 2022, con un efecto mediano y presente en todas las áreas, sobre todo en inglés. La brecha se concentra en el sector oficial y es más grande en departamentos periféricos (Guainía, San Andrés, Amazonas, La Guajira).

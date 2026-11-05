@@ -135,6 +135,8 @@ Sin el `.gitignore`, el repositorio público incluiría el conjunto de datos y l
 
 Idea elegida: **brechas en Saber 11 entre colegios oficiales y privados**, con los resultados del ICFES publicados en datos.gov.co.
 
+Esta fue la idea inicial. El proyecto terminado compara colegios **urbanos y rurales**, y conserva el tipo de colegio (oficial o no oficial) como variable de comparación.
+
 - Descripción del proyecto: [proyecto/README.md](proyecto/README.md)
 - Dependencias fijadas: [proyecto/requirements.txt](proyecto/requirements.txt)
 - Entorno: [proyecto/Dockerfile](proyecto/Dockerfile)
