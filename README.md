@@ -9,9 +9,10 @@ Además del laboratorio, el repositorio contiene el proyecto del grupo en la car
 Principales resultados:
 
 - En 2022 los estudiantes de colegios rurales obtienen en promedio **26 puntos menos** en el puntaje global (228,4 frente a 254,6). La diferencia es estadísticamente significativa y tiene un efecto mediano (d de Cohen = 0,52).
+- Dentro del mismo tipo de colegio y estrato la brecha **se mantiene, pero baja a 17,5 puntos**.
 - La brecha aparece en todas las áreas y es mayor en **inglés** (6,8 puntos).
-- **La brecha creció entre 2019 y 2022**, de 23,7 a 26,2 puntos: los dos grupos mejoraron, pero los rurales menos. Aumentó en todas las áreas, en todos los estratos y en 26 de 32 departamentos.
-- En los colegios oficiales la brecha es de 24 puntos; en los no oficiales se invierte. Es mayor en Guainía, San Andrés, Amazonas, Sucre y La Guajira.
+- **La brecha creció entre 2019 y 2022**, de 23,7 a 26,2 puntos: los dos grupos mejoraron, pero los rurales menos. Aumentó en todas las áreas, en todos los estratos y en 26 de 32 departamentos. Dentro del mismo tipo de colegio y estrato, el aumento es de 1,2 puntos.
+- En los colegios oficiales la brecha es de 24 puntos; en los no oficiales se invierte. Es mayor en Guainía, San Andrés, Amazonas, Sucre y La Guajira, aunque los tres primeros suman menos del 1 % de los rurales; Antioquia, Córdoba, Cauca, Bolívar y Nariño concentran más estudiantes afectados.
 
 ![Brecha por área, 2019 vs 2022](proyecto/figuras/brecha_por_area_periodos.png)
 
