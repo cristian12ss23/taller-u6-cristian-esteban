@@ -24,6 +24,13 @@ COLUMNAS = [  # Columnas que se piden a la API (solo las necesarias, para descar
     "cole_area_ubicacion",  # Zona del colegio: URBANO o RURAL
     "cole_naturaleza",  # Tipo de colegio: OFICIAL o NO OFICIAL
     "cole_depto_ubicacion",  # Departamento donde está el colegio
+    "cole_cod_depto_ubicacion",  # Código DANE del departamento (para el modelo en 3FN)
+    "cole_cod_mcpio_ubicacion",  # Código DANE del municipio del colegio
+    "cole_mcpio_ubicacion",  # Nombre del municipio del colegio
+    "cole_cod_dane_establecimiento",  # Código DANE del establecimiento educativo
+    "cole_nombre_establecimiento",  # Nombre del establecimiento educativo
+    "cole_cod_dane_sede",  # Código DANE de la sede donde estudia el alumno
+    "cole_nombre_sede",  # Nombre de la sede
     "fami_estratovivienda",  # Estrato de la vivienda del estudiante
     "punt_global",  # Puntaje global (0 a 500)
     "punt_matematicas",  # Puntaje de matemáticas

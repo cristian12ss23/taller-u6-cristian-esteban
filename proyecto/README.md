@@ -1,7 +1,7 @@
 # Proyecto: Brecha rural vs urbana en Saber 11
 
 ## Pregunta de análisis
-¿Cuántos puntos de diferencia hay en Saber 11 entre los estudiantes de colegios urbanos y rurales en Colombia? ¿La brecha se mantiene cuando se compara dentro del mismo tipo de colegio (oficial o no oficial) y del mismo estrato? ¿En qué departamentos es más grande? ¿Cambió entre 2019, antes de la pandemia, y 2022?
+¿Cuántos puntos de diferencia hay en Saber 11 entre los estudiantes de colegios urbanos y rurales en Colombia? ¿La brecha se mantiene cuando se compara dentro del mismo tipo de colegio (oficial o no oficial) y del mismo estrato? ¿En qué departamentos es más grande? ¿Cambió entre 2019, antes de la pandemia, y 2022? ¿Cómo cambian las cifras cuando la tabla plana se normaliza hasta la tercera forma normal (3FN) y se cuentan colegios en vez de filas?
 
 El resultado sirve para orientar dónde focalizar programas e inversión en la educación rural.
 
@@ -30,6 +30,9 @@ Los datos se descargan con la API pública de datos.gov.co, filtrados por period
 | `cole_naturaleza` | OFICIAL o NO OFICIAL (para comparar dentro del mismo tipo de colegio) |
 | `fami_estratovivienda` | Estrato del estudiante (para comparar dentro del mismo estrato) |
 | `cole_depto_ubicacion` | Departamento (para ver dónde la brecha es mayor) |
+| `cole_cod_dane_sede`, `cole_nombre_sede` | Código DANE y nombre de la sede (llave del modelo en 3FN) |
+| `cole_cod_dane_establecimiento`, `cole_nombre_establecimiento` | Código DANE y nombre del establecimiento educativo |
+| `cole_cod_mcpio_ubicacion`, `cole_mcpio_ubicacion`, `cole_cod_depto_ubicacion` | Códigos DIVIPOLA y nombre del municipio, y código del departamento |
 
 ## Método
 1. `src/descargar.py` descarga el periodo y lo guarda en `datos/` ordenado de forma fija, para que dos descargas iguales tengan la misma huella SHA-256.
@@ -41,6 +44,7 @@ Los datos se descargan con la API pública de datos.gov.co, filtrados por period
    - `manifiesto.json` con las filas quitadas, la huella SHA-256 de los datos y de cada salida, y las versiones de las bibliotecas.
 3. `src/comparar.py` pone lado a lado los dos periodos en `salidas/comparacion/`: brecha global y por área, por tipo de colegio y por departamento, con dos gráficas.
 4. `src/profundizar.py` escribe en `salidas/profundizacion/` lo que los pasos anteriores no responden: la brecha dentro del mismo tipo de colegio y estrato a la vez, el intervalo de confianza de cada departamento y el conteo de datos faltantes. También guarda los datos limpios en Parquet y comprueba la conversión. No cambia las salidas de los pasos 2 y 3, así que sus huellas siguen siendo válidas.
+5. `src/modelo_3fn.py` corre con **PySpark** en su propia imagen (`Dockerfile.spark`) y escribe en `salidas/modelo/`: diagnostica qué impide cada forma normal, descompone la tabla plana en seis tablas en 3FN guardadas en Parquet, verifica llaves e integridad con **Spark SQL**, reconstruye la tabla plana con `JOIN` para comprobar que no se pierde ni cambia nada, y compara las cifras al contar sedes en vez de filas. Ver la sección 12.
 
 Una copia de las gráficas está en `figuras/` para mostrarlas en este README.
 
@@ -60,40 +64,50 @@ Esto es lo que se usó de Computación en la Nube para Análisis de Datos y para
 | **`.gitignore`** | Los datos y las salidas no entran al repositorio. | Se versiona la receta y no el resultado, de modo que el repositorio se mantiene liviano. | `.gitignore` |
 | **Datos abiertos e ingesta por API** | La descarga va por páginas de 50.000 filas, con hasta 5 reintentos, solo 12 columnas y reutilizando el CSV si ya existe. | Una falla momentánea de red se reintenta sin perder lo ya descargado, se baja solo lo necesario y repetir el comando no duplica datos. | `src/descargar.py` |
 | **Calidad y zonas de datos** | Se separa el CSV original, los datos limpios y los resultados. Se revisó la fuente antes de analizar. | Revisar los identificadores mostró que los conteos estaban casi duplicados, y se corrigió antes de comparar 2019 con 2022. | `src/analisis.py`, `Calidad de los datos` |
+| **Modelado y normalización (1FN, 2FN, 3FN)** | Se probaron 10 dependencias funcionales en los datos y la tabla plana se descompuso en seis tablas con llaves primarias y foráneas. | Mostró que contar filas mide estudiantes y no colegios, que 83 nombres de municipio se repiten entre municipios distintos y que la zona de 66 sedes cambió entre 2019 y 2022. | `src/modelo_3fn.py`, sección 12 |
+| **PySpark** | `SparkSession` local, lectura perezosa del CSV, transformaciones (`filter`, `groupBy`, `join`, `withColumn`), acciones (`count`, `toPandas`), `cache` y 4 particiones. | Procesa 2,16 millones de filas en unos 2,5 minutos en el Codespace, y el mismo código corre en un clúster o en Databricks cambiando solo la configuración de la sesión. | `src/modelo_3fn.py`, `Dockerfile.spark` |
+| **Spark SQL** | Las tablas se registran como vistas y se consultan con SQL: llaves repetidas, `LEFT ANTI JOIN` para huérfanos, regla DIVIPOLA, reconstrucción con `JOIN` y `EXPLAIN FORMATTED`. | Como Spark no hace cumplir llaves primarias ni foráneas, la integridad se comprueba con consultas: las 11 dan 0. | `salidas/modelo/plan_reconstruccion.txt` |
 | **Parquet** | El resumen y los datos limpios se guardan en Parquet. Se comparan filas, columnas, vacíos y suma del puntaje antes de aceptar la conversión. | En 20224 se pasa de 80,7 MB (CSV con repetidos) a 6,4 MB (Parquet sin repetidos), con lectura por columnas. Las cuatro comprobaciones pasaron en los dos periodos. | `src/profundizar.py`, `registro.json` |
 
-**Herramientas del curso que no se usaron.** PySpark, Databricks y Cassandra no hacen parte de este proyecto. Con cerca de un millón de filas por periodo, pandas fue suficiente en el Codespace. Cassandra está pensada para consultar por clave, y aquí el trabajo consiste en agrupar y resumir todos los datos.
+**Herramientas del curso que no se usaron.** Databricks y Cassandra no hacen parte de este proyecto. El modelo en 3FN corre con PySpark dentro de Docker, en el Codespace, para que cualquiera lo reproduzca con dos comandos y sin cuenta en otra plataforma; el mismo código corre en Databricks, donde las tablas se guardarían como tablas Delta con `saveAsTable`. Cassandra está pensada para consultar por clave, y aquí el trabajo consiste en agrupar y resumir todos los datos.
 
-Para el análisis se usaron pandas, scipy y matplotlib.
+Para el análisis estadístico se usaron pandas, scipy y matplotlib; para el modelo en 3FN, PySpark y Spark SQL.
 
 ## Cómo reproducir
 Desde la raíz del repositorio, en el codespace:
 
 ```bash
-docker build --tag proyecto:0.4 proyecto/
+docker build --tag proyecto:0.5 proyecto/
 
 # 2022
 docker run --rm -e PERIODO=20224 \
   --volume "$(pwd)/proyecto/datos:/app/datos" \
   --volume "$(pwd)/proyecto/salidas:/app/salidas" \
-  proyecto:0.4
+  proyecto:0.5
 
 # 2019
 docker run --rm -e PERIODO=20194 \
   --volume "$(pwd)/proyecto/datos:/app/datos" \
   --volume "$(pwd)/proyecto/salidas:/app/salidas" \
-  proyecto:0.4
+  proyecto:0.5
 
 # Comparación
 docker run --rm --entrypoint python \
   --volume "$(pwd)/proyecto/salidas:/app/salidas" \
-  proyecto:0.4 src/comparar.py
+  proyecto:0.5 src/comparar.py
 
 # Profundización (usa los CSV de datos/)
 docker run --rm --entrypoint python \
   --volume "$(pwd)/proyecto/datos:/app/datos" \
   --volume "$(pwd)/proyecto/salidas:/app/salidas" \
-  proyecto:0.4 src/profundizar.py
+  proyecto:0.5 src/profundizar.py
+
+# Modelo en 3FN con PySpark (usa los CSV de datos/)
+docker build --file proyecto/Dockerfile.spark --tag proyecto-spark:1.0 proyecto/
+docker run --rm \
+  --volume "$(pwd)/proyecto/datos:/app/datos" \
+  --volume "$(pwd)/proyecto/salidas:/app/salidas" \
+  proyecto-spark:1.0
 ```
 
 Cada descarga trae cerca de un millón de filas y tarda varios minutos. Las ejecuciones siguientes reutilizan los CSV de `datos/`. Si aparece `docker: command not found`, la solución está en "Incidencias en M0" de `INFORME.md`.
@@ -245,6 +259,61 @@ Brecha urbano − rural en 2022, dentro de cada combinación:
 
 Las tablas completas, con los conteos y la categoría `SIN DATO`, quedan en `salidas/profundizacion/`.
 
+## Modelo en 3FN con PySpark
+
+### 12. De una tabla plana a seis tablas
+La tabla descargada es plana: cada fila es un estudiante y repite los datos de su sede, su colegio, su municipio y su departamento. `src/modelo_3fn.py` la lee con PySpark (2.162.410 filas de los dos periodos, en 4 particiones), prueba 10 dependencias funcionales y la descompone hasta la tercera forma normal:
+
+| Tabla | Llave primaria | Columnas | Filas |
+|---|---|---|---|
+| `departamentos` | `cod_depto` | departamento | 33 |
+| `municipios` | `cod_mcpio` | municipio, `cod_depto` (FK) | 1.114 |
+| `establecimientos` | `cod_establecimiento` | establecimiento, naturaleza | 10.724 |
+| `sedes` | `cod_sede` | sede, `cod_establecimiento` (FK), `cod_mcpio` (FK) | 11.937 |
+| `sedes_periodo` | (`cod_sede`, `periodo`) | zona | 22.336 |
+| `resultados` | `estu_consecutivo` | periodo, `cod_sede` (FK), estrato, seis puntajes | 1.079.002 |
+
+`resultados` se une a `sedes_periodo` por la llave compuesta (`cod_sede`, `periodo`). Las tablas quedan en Parquet en `salidas/modelo/parquet/`.
+
+**Hallazgos y decisiones**
+
+| Hallazgo (evidencia) | Forma | Decisión |
+|---|---|---|
+| Cada estudiante aparece dos veces: 2.162.410 filas para 1.079.002 estudiantes | 1FN | Una fila por `estu_consecutivo`, que pasa a ser la llave primaria |
+| Los datos del colegio, el municipio y el departamento se repiten en cada estudiante | 3FN | Tablas `sedes`, `establecimientos`, `municipios` y `departamentos` |
+| El departamento depende del municipio, no del estudiante | 3FN | Se toma de los dos primeros dígitos del código DIVIPOLA; ningún municipio incumple la regla |
+| La zona de 66 sedes cambió entre 2019 y 2022 | 3FN | La zona depende de la sede **y** del periodo: tabla `sedes_periodo` con llave compuesta |
+| Hay 1.114 códigos de municipio pero solo 1.031 nombres: municipios distintos comparten nombre | Dominio | El municipio se identifica por código, nunca por nombre |
+| Un colegio tuvo dos naturalezas en 2019 (35 estudiantes) y 5 cambiaron entre periodos | 3FN | Se guarda la naturaleza más frecuente: 354 estudiantes de 2019 (0,06 %) quedan con la de 2022 |
+| Cambian entre periodos el nombre de 1.337 sedes y 632 colegios; 3 sedes cambian de colegio y 2 de municipio | Dominio | Se guarda el valor más frecuente; el análisis usa códigos, y ningún estudiante cambia de zona ni de departamento |
+
+**Verificación con Spark SQL.** Spark no hace cumplir llaves primarias ni foráneas, así que se comprueban con consultas: llaves repetidas en las seis tablas, huérfanos con `LEFT ANTI JOIN` en las cuatro relaciones y la regla DIVIPOLA. Las 11 consultas dan **0**. Al reconstruir la tabla plana con `JOIN` salen las mismas 1.079.002 filas, sin diferencias de zona ni de departamento, y la brecha calculada con SQL sobre el modelo es la misma del análisis: **23,69** en 2019 y **26,24** en 2022.
+
+| Indicador | Tabla plana | Modelo 3FN |
+|---|---|---|
+| Filas (observaciones) | 2.162.410 | 1.079.002 |
+| Departamentos (por nombre / por código) | 33 / 33 | 33 |
+| Municipios (por nombre / por código) | 1.031 / 1.114 | 1.114 |
+| Municipios que incumplen DIVIPOLA | 0 | 0 |
+| Brecha urbano − rural 2019 | 23,69 | 23,69 |
+| Brecha urbano − rural 2022 | 26,24 | 26,24 |
+
+### 13. Contar colegios en vez de filas cambia la foto
+Con el modelo se puede contar por sede, algo que la tabla plana no permite sin repetir cálculos:
+
+| Periodo | Zona | Sedes | Estudiantes | Estudiantes por sede | Media por estudiante | Media por sede |
+|---|---|---|---|---|---|---|
+| 2019 | Urbano | 7.149 | 460.467 | 64,4 | 249,91 | 251,18 |
+| 2019 | Rural | 3.790 | 85.744 | 22,6 | 226,22 | 223,15 |
+| 2022 | Urbano | 7.234 | 441.577 | 61,0 | 254,63 | 255,06 |
+| 2022 | Rural | 4.163 | 91.214 | 21,9 | 228,39 | 225,26 |
+
+- **Lo rural pesa el doble en colegios que en estudiantes.** En 2022, el 36,5 % de las sedes con estudiantes evaluados son rurales, pero solo el 17,1 % de los estudiantes. Una sede rural presenta en promedio 22 estudiantes; una urbana, 61.
+- **Por colegio, la brecha es mayor.** Si cada sede cuenta una vez, la brecha de 2022 es de 29,80 puntos, frente a 26,24 por estudiante (en 2019, 28,03 frente a 23,69). Las sedes rurales pequeñas tienen promedios más bajos.
+- **En algunos departamentos la diferencia es enorme.** En Guaviare el 62,5 % de las sedes son rurales y solo el 25,8 % de los estudiantes; en Caquetá, 48,8 % frente a 17,6 %; en Chocó, 60,9 % frente a 30,0 %; y en Antioquia, 43,7 % frente a 17,3 %.
+
+![Porcentaje de sedes rurales frente a porcentaje de estudiantes rurales por departamento, 2022](figuras/efecto_normalizacion.png)
+
 ## Conclusión
 Los estudiantes de colegios rurales obtienen en promedio 26 puntos menos en el puntaje global de Saber 11 de 2022, con un efecto mediano y presente en todas las áreas, sobre todo en inglés. Al comparar dentro del mismo tipo de colegio y estrato, la brecha baja a 17,5 puntos: se mantiene, pero cerca de un tercio de la cifra general corresponde a la composición de los grupos. La brecha se concentra en el sector oficial, donde están el 94 % de los rurales.
 
@@ -252,13 +321,22 @@ Para focalizar programas e inversión, conviene mirar dos cosas. Las brechas má
 
 Entre 2019 y 2022 la brecha aumentó de 23,7 a 26,2 puntos: aunque los dos grupos mejoraron, los colegios rurales mejoraron menos. El aumento se ve en todas las áreas y en 26 de 32 departamentos. Dentro del mismo tipo de colegio y estrato es de 1,2 puntos, menos de la mitad de los 2,55 generales, pero sigue siendo claro. Esto es coherente con la idea de que la pandemia y la educación remota afectaron más a la educación rural, pero este análisis compara dos momentos y no prueba la causa: otros factores también pudieron cambiar en esos años.
 
+Normalizar la tabla hasta 3FN con PySpark no cambió la brecha, pero sí la forma de contar: la tabla plana repetía a cada estudiante dos veces y no permitía contar colegios. Con el modelo se ve que lo rural es el 36,5 % de las sedes y solo el 17,1 % de los estudiantes, y que por colegio la brecha sube a 29,8 puntos. Para focalizar programas, esto importa: la educación rural está repartida en muchas sedes pequeñas.
+
 ## Huellas de referencia
 ```
-2d2cffdc691ca7c5b1db4a38bbba6958fb3f56c53b0f5a9f8a516c5ee0fae46c  datos/saber11_20194.csv
-bd21913fb35ac914fe87bce5c33a96c8549d38406a3fe68cf2fd70d064341219  datos/saber11_20224.csv
+462f0dab35cef1f536c0ff4058f0e3022591b731b369960b2dac8b156db0f02d  datos/saber11_20194.csv
+617c6547a6725ff7a2c4fe860b35a8c7aca83878cb0dc0fdc0a0d365e3f10905  datos/saber11_20224.csv
 b805e8031e62bad43d9175c51211154aecc04c302fbcb93e14b61d3c88224445  salidas/20194/resumen_zona.csv
 229ebc57a0fd8eb2a4912700a674d4792903dc0c71f8d6974ce205ef623c84bc  salidas/20224/resumen_zona.csv
 b1198188685e39fac8fa1d4dff436e8d085ed8aba6604687f4611b2e3d7529c9  salidas/comparacion/comparacion_zona.csv
 a360db391ce583118846c90e0afa1c5051a3ccb0ede42ddbd7b354ed864e0611  salidas/comparacion/comparacion_departamento.csv
 42b0c8367db6797d9c43294594502ccb57092d127e45b6fafd6d57f5967277d3  salidas/profundizacion/resultados.md
+ed26b106391bd1aa3bd276db02afb3916a0a7a19bc6cccbf292c2d8cd8be03cf  salidas/modelo/brecha_modelo.csv
+e0b93913213b00a6b34801a6cfb9f847246ba96073d90d3f8fb0a54571d58a7e  salidas/modelo/dependencias.csv
+198cae0f17f35348a93a3e8d5c15b64648ca310023e62579fbd4864ba49964f6  salidas/modelo/efecto_sedes.csv
+e8ccb5f50aff1c07430758687f0f4d2e955bef2197f4dc5062354675faf24fa7  salidas/modelo/indicadores_plana_vs_3fn.csv
+baae94d315a380e05fb3c7b8efe0e518a29d7040a8cc03c8da5231da10235077  salidas/modelo/rural_departamento_20224.csv
 ```
+
+Los CSV descargados traen desde la versión 0.5 las columnas de códigos del colegio, por eso su huella cambió respecto a versiones anteriores. Las salidas del análisis (`resumen_zona.csv` y las demás) mantienen exactamente las mismas huellas. Los archivos Parquet que escribe Spark no tienen huella fija porque Spark les pone un nombre distinto en cada escritura; por eso se registran las huellas de los resúmenes en CSV.

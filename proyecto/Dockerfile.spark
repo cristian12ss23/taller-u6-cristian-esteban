@@ -1,0 +1,36 @@
+# Imagen del modelo en 3FN con PySpark.
+# Misma base que la imagen del análisis, más Java 17, que Spark necesita para correr.
+FROM python:3.12-slim-bookworm
+
+# Sin archivos .pyc, salida sin búfer, sin caché de pip y carpeta de matplotlib escribible.
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    MPLCONFIGDIR=/tmp/matplotlib
+
+# Java 17 (motor de Spark) y procps (Spark usa el comando ps).
+RUN mkdir -p /usr/share/man/man1 \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends openjdk-17-jre-headless procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Usuario sin privilegios (principio de privilegio mínimo).
+RUN groupadd --gid 1000 analista \
+    && useradd --uid 1000 --gid analista --create-home analista
+
+WORKDIR /app
+
+# Primero las dependencias: esta capa se reutiliza mientras requirements-spark.txt no cambie.
+COPY requirements-spark.txt .
+RUN pip install --no-cache-dir -r requirements-spark.txt
+
+# Después el código.
+COPY src/ ./src/
+RUN mkdir -p /app/datos /app/salidas && chown -R analista:analista /app
+
+USER analista
+
+# Construye y verifica el modelo en 3FN para los dos periodos.
+ENTRYPOINT ["python", "src/modelo_3fn.py"]
+CMD ["--periodos", "20194", "20224"]
